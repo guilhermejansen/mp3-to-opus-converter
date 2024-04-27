@@ -19,7 +19,7 @@ app.use(fileUpload());
 ffmpeg.setFfmpegPath(ffmpegStatic!);
 
 app.get('/', (req: Request, res: Response) => {
-    res.json({ 
+    res.json({
         message: "API está online",
         endpoints: {
             convert: "/convert - POST to convert audio files to opus format",
@@ -35,7 +35,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     }
     const apiSecretKey = process.env.API_SECRET_KEY;
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || authHeader !== `Bearer ${apiSecretKey}`) {
         return res.status(401).json({ message: 'Não autorizado' });
     }
@@ -54,7 +54,7 @@ app.post('/convert', (req, res) => {
     console.log(`Handling file: ${audioFile.name}`);
 
     const readableStream = new Readable();
-    readableStream._read = () => {};
+    readableStream._read = () => { };
     readableStream.push(audioFile.data);
     readableStream.push(null);
 
@@ -67,13 +67,19 @@ app.post('/convert', (req, res) => {
         .audioBitrate(128)
         .toFormat('opus')
         .on('end', () => {
-            console.log(`Conversion finished, streaming file: ${output}`);
+            console.log(`Conversion finished, preparing to send file: ${output}`);
             const stream = fs.createReadStream(output);
-            stream.pipe(res);
+
+            // Listen to the 'close' event to delete the file afterwards
             stream.on('close', () => {
                 console.log(`Deleting file: ${output}`);
                 fs.unlinkSync(output);
             });
+
+            // Stream the file in the response
+            res.setHeader('Content-Type', 'audio/opus');
+            res.setHeader('Content-Disposition', `attachment; filename=${output}`);
+            stream.pipe(res);
         })
         .on('error', err => {
             console.log(`Conversion error: ${err.message}`);
@@ -100,7 +106,7 @@ app.post('/convert-url', async (req, res) => {
 
         console.log('File downloaded, starting conversion');
         const readable = new Readable();
-        readable._read = () => {};
+        readable._read = () => { };
         readable.push(response.data);
         readable.push(null);
 
@@ -112,10 +118,24 @@ app.post('/convert-url', async (req, res) => {
             .audioBitrate(128)
             .toFormat('opus')
             .on('end', () => {
-                console.log(`Conversion finished, streaming file: ${output}`);
-                const stream = fs.createReadStream(output);
-                stream.pipe(res);
-                stream.on('close', () => {
+                console.log(`Conversion finished, preparing to send file: ${output}`);
+                fs.stat(output, (err, stats) => {
+                    if (err) {
+                        return res.status(500).send('Error getting file stats.');
+                    }
+
+                    const fileInfo = {
+                        data: {
+                            'File Name': output,
+                            'runData.directory': 'v1/text-to-speech',
+                            'File Extension': 'opus',
+                            'Mime Type': 'audio/opus',
+                            'File Size': `${stats.size} bytes`
+                        }
+                    };
+
+                    res.json(fileInfo);
+
                     console.log(`Deleting file: ${output}`);
                     fs.unlinkSync(output);
                 });
