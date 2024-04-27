@@ -1,3 +1,4 @@
+// server.ts
 import express from 'express';
 import bodyParser from 'body-parser';
 import fileUpload, { UploadedFile } from 'express-fileupload';
