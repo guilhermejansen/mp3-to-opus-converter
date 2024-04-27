@@ -59,7 +59,6 @@ Agradecemos qualquer apoio! Se deseja contribuir, considere fazer uma doação:
 ## Licença
 
 Este projeto está licenciado sob a Licença MIT.
-```
 
 ### Finalizando
 
