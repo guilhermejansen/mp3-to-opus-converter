@@ -1,5 +1,4 @@
-// server.ts
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser';
 import fileUpload, { UploadedFile } from 'express-fileupload';
 import ffmpeg from 'fluent-ffmpeg';
@@ -7,6 +6,9 @@ import ffmpegStatic from 'ffmpeg-static';
 import axios from 'axios';
 import { Readable } from 'stream';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const port = 5000;
@@ -15,6 +17,30 @@ app.use(bodyParser.json());
 app.use(fileUpload());
 
 ffmpeg.setFfmpegPath(ffmpegStatic!);
+
+app.get('/', (req: Request, res: Response) => {
+    res.json({ 
+        message: "API está online",
+        endpoints: {
+            convert: "/convert - POST to convert audio files to opus format",
+            convertUrl: "/convert-url - POST to download and convert audio from URL to opus format",
+            health: "/health - GET to check API health"
+        }
+    });
+});
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+    if (['/health', '/'].includes(req.path)) {
+        return next();
+    }
+    const apiSecretKey = process.env.API_SECRET_KEY;
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || authHeader !== `Bearer ${apiSecretKey}`) {
+        return res.status(401).json({ message: 'Não autorizado' });
+    }
+    next();
+});
 
 app.post('/convert', (req, res) => {
     console.log('Received request to /convert endpoint');
@@ -103,6 +129,10 @@ app.post('/convert-url', async (req, res) => {
         console.log(`Error downloading or converting file: ${error}`);
         res.status(500).send('Failed to download or convert the file.');
     }
+});
+
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
 });
 
 app.listen(port, () => {
