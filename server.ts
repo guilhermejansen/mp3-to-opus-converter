@@ -22,9 +22,9 @@ app.get('/', (req: Request, res: Response) => {
     res.json({
         message: "API está online",
         endpoints: {
-            convert: "/convert - POST to convert audio files to opus format",
-            convertUrl: "/convert-url - POST to download and convert audio from URL to opus format",
-            health: "/health - GET to check API health"
+            convert: "/convert - POST para converter arquivos de áudio para formato opus",
+            convertUrl: "/convert-url - POST para baixar e converter áudio de URL para formato opus",
+            health: "/health - GET para verificar a saúde da API"
         }
     });
 });
@@ -43,22 +43,22 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.post('/convert', (req, res) => {
-    console.log('Received request to /convert endpoint');
+    console.log('Recebido pedido para o endpoint /convert');
 
     if (!req.files || !req.files.audio) {
-        console.log('No file uploaded');
-        return res.status(400).send('No file uploaded.');
+        console.log('Nenhum arquivo enviado');
+        return res.status(400).send('Nenhum arquivo enviado.');
     }
 
     const audioFile = req.files.audio as UploadedFile;
-    console.log(`Handling file: ${audioFile.name}`);
+    console.log(`Manipulando arquivo: ${audioFile.name}`);
 
     const readableStream = new Readable();
     readableStream._read = () => { };
     readableStream.push(audioFile.data);
     readableStream.push(null);
 
-    console.log('Starting conversion process');
+    console.log('Iniciando processo de conversão');
     const output = `output-${Date.now()}.opus`;
 
     ffmpeg(readableStream)
@@ -67,12 +67,12 @@ app.post('/convert', (req, res) => {
         .audioBitrate(128)
         .toFormat('opus')
         .on('end', () => {
-            console.log(`Conversion finished, preparing to send file: ${output}`);
+            console.log(`Conversão concluída, preparando para enviar o arquivo: ${output}`);
             const stream = fs.createReadStream(output);
 
             // Listen to the 'close' event to delete the file afterwards
             stream.on('close', () => {
-                console.log(`Deleting file: ${output}`);
+                console.log(`Arquivo deletado: ${output}`);
                 fs.unlinkSync(output);
             });
 
@@ -82,7 +82,7 @@ app.post('/convert', (req, res) => {
             stream.pipe(res);
         })
         .on('error', err => {
-            console.log(`Conversion error: ${err.message}`);
+            console.log(`Erro na conversão: ${err.message}`);
             res.status(500).send(err.message);
         })
         .save(output);
@@ -90,21 +90,21 @@ app.post('/convert', (req, res) => {
 
 app.post('/convert-url', async (req, res) => {
     const { url } = req.body;
-    console.log(`Received request to /convert-url with URL: ${url}`);
+    console.log(`Recebido pedido para o endpoint /convert-url com URL: ${url}`);
 
     if (!url) {
-        console.log('No URL provided');
-        return res.status(400).send('No URL provided.');
+        console.log('Nenhuma URL fornecida');
+        return res.status(400).send('Nenhuma URL fornecida.');
     }
 
     try {
-        console.log('Downloading file');
+        console.log('Baixando arquivo');
         const response = await axios({
             url,
             responseType: 'arraybuffer'
         });
 
-        console.log('File downloaded, starting conversion');
+        console.log('Arquivo baixado, iniciando conversão');
         const readable = new Readable();
         readable._read = () => { };
         readable.push(response.data);
@@ -118,10 +118,10 @@ app.post('/convert-url', async (req, res) => {
             .audioBitrate(128)
             .toFormat('opus')
             .on('end', () => {
-                console.log(`Conversion finished, preparing to send file: ${output}`);
+                console.log(`Conversão concluída, preparando para enviar o arquivo: ${output}`);
                 fs.stat(output, (err, stats) => {
                     if (err) {
-                        return res.status(500).send('Error getting file stats.');
+                        return res.status(500).send('Erro ao obter estatísticas do arquivo.');
                     }
 
                     const fileInfo = {
@@ -136,18 +136,18 @@ app.post('/convert-url', async (req, res) => {
 
                     res.json(fileInfo);
 
-                    console.log(`Deleting file: ${output}`);
+                    console.log(`Arquivo deletado: ${output}`);
                     fs.unlinkSync(output);
                 });
             })
             .on('error', err => {
-                console.log(`Conversion error: ${err.message}`);
+                console.log(`Erro na conversão: ${err.message}`);
                 res.status(500).send(err.message);
             })
             .save(output);
     } catch (error) {
-        console.log(`Error downloading or converting file: ${error}`);
-        res.status(500).send('Failed to download or convert the file.');
+        console.log(`Erro ao baixar ou converter o arquivo: ${error}`);
+        res.status(500).send('Falha ao baixar ou converter o arquivo.');
     }
 });
 
@@ -156,5 +156,5 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`Servidor rodando na porta ${port}`);
 });
